@@ -1,0 +1,132 @@
+Calciu Alexandru - 321CCa
+
+Pentru a rula tema folositi comanda `make` pentru a compila
+si apoi ./client pentru a rula programul.
+
+Tema a fost scrisa in C++ si am testat-o pe g++ pentru
+versiunile de la 7 la 12 pe o masina ubuntu 20.04 si una
+debian (kali linux). Am implementat tema pe o masina
+ubuntu 20.04 cu g++ versiunea 9.4.0 si apoi am testat-o
+pe celelalte versiuni. Nu am testat-o pe alte compilatoare
+in afara de cele mentionate aici dar ar trebui sa nu fie
+probleme la compilare.
+
+Daca totusi sunt probleme la compilare, tin sa mentionez
+ca toate cerintele au fost implementate respectand indrumarile
+din cerinta. Am folosit pentru teste utilizatorul alex cu parola
+alex si ma mir sincer ca nu l-a ocupat cineva inaintea mea.
+
+Rezolvarea mea se bazeaza pe scheletul de laborator din
+laboratorul 9. Peste acest schelet am adus unele modificari,
+iar clientul este rescris integral de mine.
+
+Pentru a parsa datele de tip json am ales sa folosesc
+https://github.com/nlohmann/json pentru ca am ales sa fac
+tema in C++ si am considerat ca merita sa folosesc unele
+feature-uri specifice C++ pentru a-mi face viata mai usoara.
+De asemenea, mi-au placut mai mult exemplele de cod de la
+nlohmann, in special partea de adaugare in json care seamana
+cu cea din JavaScript.
+
+In majoritatea cazurilor am folosit ordered_json pentru
+a pastra ordinea campurilor asa cum le-am introdus eu.
+Nu stiu daca acest lucru ar fi influentat cumva primirea
+request-urilor de catre server dar citind documentatia
+am considerat ca asta este o optiune mai buna pentru mine.
+
+La partea de trimis mesaje peste retea am ales sa deschid
+cate o conexiune pentru fiecare cerere pe care o trimit,
+pentru a evita situatiile in care ar da timeout. Dupa ce
+am primit raspunsul de la server, o inchid.
+
+Am ales sa nu folosesc un mecanism de multiplexare I/O
+precum poll sau epoll pentru ca avand aceasta abordare in
+privinta conexiunilor, singurul fd care ar fi fost monitorizat
+in mod constant ar fi fost STDIN si nu s-ar fi justificat.
+De asemenea, nu s-a mentionat in cerinta ca ar trebui
+sa existe un comportament non-blocant/asincron al clientului,
+deci nu am tratat special operatiile blocante
+(send/recv/read prin fgets/write prin printf/cout).
+
+Dat fiind ca m-am acomodat usor la folosirea bibliotecii
+pentru parsat date de tip json, m-am gandit sa il folosesc
+si pentru alcatuirea header-ului http, deoarece am considerat
+ca un camp din header este tot o pereche cheie-valoare asa
+cum se intampla si intr-un json.
+
+Acest lucru se observa in functia make_http_header, in care
+iterez printr-un obiect json scriind intr-un buffer linii de
+formatul [cheie]: [valoare], precum "Content-Type: application/json".
+
+Am folosit aceasta metoda pentru o mai mare flexibilitate a
+codului, functiile din lab fiind destul de restrictive in
+privinta campurilor care pot fi adaugate in header. Am
+considerat ca nu merita sa adaptez codul deja existent de acolo
+si ca mai bine il scriu eu de la 0 astfel.
+
+In functia handle_login am folosit metoda initiala cu functiile
+din laborator, am uitat sa o schimb si am decis sa o las ca
+exemplu pentru abordarea mea initiala legata de mesaje.
+
+Am folosit biblioteca pentru parsat date json si pentru
+primirea datelor de la utilizator acolo unde se preta acest lucru.
+Astfel dupa ce toate datele necesare au fost citite, payload-ul
+request-ului este deja facut si gata pentru a fi trimis.
+
+M-am folosit de faptul ca numele prompt-ului este identic
+cu cheia din obiectul json si am facut 2 vectori globali
+care reprezinta 2 colectii de prompt-uri. Consider aceasta
+abordare una flexibila deoarece daca mai vreau sa adaug date
+la o carte de exemplu pot pur si simplu sa mai adaug un element
+in vectorul de prompt-uri.
+
+Am incercat pe cat posibil sa previn cazurile in care o cerere
+cu date eronate ar fi trimisa la server. Am tratat cazurile
+urmatoare:
+
+- Utilizatorul introduce o comanda invalida
+- Utilizatorul vrea sa foloseasca biblioteca (enter_library, get_books,
+get_book, add_book sau delete_book) fara a fi logat.
+- Utilizatorul vrea sa foloseasca biblioteca (get_books,
+get_book, add_book sau delete_book) fara a fi primit token de acces.
+- Utilizatorul vrea se logheze intr-un cont in timp ce este deja
+logat.
+- Utilizatorul vrea sa inregistreze un cont nou in timp ce este
+logat.
+- Utilizatorul vrea sa introduca un numar non-natural sau o valoare
+non-numerica intr-un context in care se cere un numar natural(la
+get_book si la add_book la page_count).
+- Utilizatorul vrea sa se delogheze fara a fi logat.
+
+Dimensiunea buffer-ului de citire la add_book este 1024 de octeti,
+daca un utilizator introduce date mai lungi de 1024 de caractere,
+se va mai efectua un apel de fgets si toate caracterele in plus
+vor fi citite atunci. Acest caz se considera comportament nedefinit
+si nu am stiut cum sa il tratez altfel.
+
+Nu am testat cazul in care am trimis prea multe request-uri pentru
+ca nu am ajuns niciodata in cazul acela si s-a mentionat explicit
+in cerinta ca nu trebuie sa il tratam. Se considera comportament
+nedefinit.
+
+Pentru a afisa mesajele de eroare am facut pur si simplu un wrapper
+peste cele trimise de server.
+
+Am facut in asa fel incat exit sa trimita serverului un mesaj de logout,
+daca utilizatorul este logat. Nu am vazut acest lucru mentionat in
+cerinta sau pe forum, dar m-am gandit ca ar avea sens sa fie asa.
+
+Am facut cate un handler pentru fiecare tip de actiune posibila
+si le-am numit sugestiv in cod. Pentru ca get_book si delete_book
+ajunsesera sa fie foarte asemanatoare, am decis sa fac o singura
+functie pentru ele, diferenta din request fiind metoda(GET sau DELETE)
+si faptul ca la get_book raspunsul are continut.
+
+Functia handle_invalid_command are un singur rand dar m-am gandit
+ca pe viitor se mai poate adauga niste logica acolo pentru a o
+face mai utila asa ca ar fi mai ok sa fie functie in the first place,
+chiar daca e doar un apel la printf.
+
+Cookie-ul si JWT-ul le-am stocat global si la fiecare logout
+pun zero in acele buffere pentru a marca faptul ca utilizatorul
+nu mai este logat.
